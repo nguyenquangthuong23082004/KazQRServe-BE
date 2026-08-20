@@ -1,0 +1,34 @@
+# Cấu hình công cụ Hot-Reload Air (Golang)
+
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -o ./tmp/main ./cmd/api/main.go"
+  bin = "tmp/main"
+  full_bin = "./tmp/main"
+  include_ext = ["go", "tpl", "html", "toml", "env"]
+  exclude_dir = ["assets", "tmp", "vendor", "docs"]
+  include_dir = []
+  exclude_file = []
+  exclude_regex = ["_test.go"]
+  exclude_unchanged = true
+  follow_symlink = true
+  log = "air.log"
+  delay = 1000
+  stop_on_error = true
+  send_interrupt = true
+  kill_delay = 500
+
+[log]
+  time = true
+  color = true
+
+[color]
+  main = "magenta"
+  watcher = "cyan"
+  build = "yellow"
+  runner = "green"
+
+[misc]
+  clean_on_exit = true
