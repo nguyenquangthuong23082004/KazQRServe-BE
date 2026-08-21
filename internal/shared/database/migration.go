@@ -3,7 +3,8 @@ package database
 import (
 	"log"
 
-	"github.com/nguyenquangthuong23082004/KazQRServe-BE/internal/modules/store/entity"
+	storeEntity "github.com/nguyenquangthuong23082004/KazQRServe-BE/internal/modules/store/entity"
+	tableEntity "github.com/nguyenquangthuong23082004/KazQRServe-BE/internal/modules/table/entity"
 	"gorm.io/gorm"
 )
 
@@ -12,9 +13,7 @@ func AutoMigrate(db *gorm.DB) error {
 	log.Println("Starting auto migration...")
 
 	// Khai báo tất cả các model muốn tạo bảng ở đây
-	err := db.AutoMigrate(
-		&entity.Store{},
-	)
+	err := db.AutoMigrate(&storeEntity.Store{}, &tableEntity.Table{})
 
 	if err != nil {
 		log.Fatalf("Auto migration failed: %v", err)
