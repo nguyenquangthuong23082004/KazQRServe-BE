@@ -7,6 +7,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/nguyenquangthuong23082004/KazQRServe-BE/internal/app"
 	"github.com/nguyenquangthuong23082004/KazQRServe-BE/internal/shared/database"
+	"github.com/nguyenquangthuong23082004/KazQRServe-BE/internal/shared/database/seeder"
 )
 
 func main() {
@@ -24,6 +25,12 @@ func main() {
 	// tự động tạo hoặc nâng cấp cấu trúc bảng
 	if err := database.AutoMigrate(db); err != nil {
 		log.Fatalln("Error migrating database: ", err)
+	}
+
+	// chạy seeder data
+
+	if err := seeder.Run(db); err != nil {
+		log.Fatalln("Error seeding database: ", err)
 	}
 
 	// Truyền DB vừa kết nối vào App
