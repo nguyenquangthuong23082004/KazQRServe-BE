@@ -1,4 +1,4 @@
-package entity
+package store
 
 import (
 	"github.com/nguyenquangthuong23082004/KazQRServe-BE/internal/shared/model"
