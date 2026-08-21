@@ -21,6 +21,11 @@ func main() {
 		log.Fatalln("Error initializing database: ", err)
 	}
 
+	// tự động tạo hoặc nâng cấp cấu trúc bảng
+	if err := database.AutoMigrate(db); err != nil {
+		log.Fatalln("Error migrating database: ", err)
+	}
+
 	// Truyền DB vừa kết nối vào App
 	application := app.NewApp(db)
 
