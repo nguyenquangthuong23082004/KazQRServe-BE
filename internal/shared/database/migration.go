@@ -20,6 +20,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&store.Store{},
 		&table.Table{},
 		&auth.User{},
+		&auth.RefreshToken{},
 		&menu.Category{},
 		&menu.Product{},
 		&order.Session{},

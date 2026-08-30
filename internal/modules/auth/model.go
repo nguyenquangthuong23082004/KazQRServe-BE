@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"time"
+
 	"github.com/nguyenquangthuong23082004/KazQRServe-BE/internal/modules/store"
 	"github.com/nguyenquangthuong23082004/KazQRServe-BE/internal/shared/model"
 )
@@ -12,4 +14,12 @@ type User struct {
 	Role     string       `gorm:"column:role;type:varchar(50);not null" json:"role"`
 	StoreID  uint         `gorm:"column:store_id;not null" json:"store_id"`
 	Store    *store.Store `gorm:"foreignKey:StoreID;references:ID;constraint:onUpdate:CASCADE,onDelete:CASCADE" json:"store,omitempty"`
+}
+
+type RefreshToken struct {
+	model.Base
+	Token     string    `gorm:"column:token;type:text;unique;not null" json:"token"`
+	UserID    uint      `gorm:"column:user_id;not null" json:"user_id"`
+	User      *User     `gorm:"foreignKey:UserID;constraint:onUpdate:CASCADE,onDelete:CASCADE" json:"user,omitempty"`
+	ExpiresAt time.Time `gorm:"column:expires_at;not null" json:"expires_at"`
 }
