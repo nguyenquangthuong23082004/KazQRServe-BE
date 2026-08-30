@@ -30,3 +30,22 @@ func (r *UserRepository) FindUserByEmail(email string) (*User, error) {
 	// Trả về con trỏ tới User để Service sử dụng.
 	return &user, nil
 }
+
+// CreateRefreshToken lưu Refresh Token mới vào Database.
+func (r *UserRepository) CreateRefreshToken(token *RefreshToken) error {
+	return r.db.Create(token).Error
+}
+
+// DeleteRefreshToken xóa Refresh Token khỏi Database (dùng khi Logout).
+func (r *UserRepository) DeleteRefreshToken(token string) error {
+	return r.db.Where("token = ?", token).Delete(&RefreshToken{}).Error
+}
+
+// FindRefreshToken tìm kiếm Refresh Token trong Database.
+func (r *UserRepository) FindRefreshToken(token string) (*RefreshToken, error) {
+	var refreshToken RefreshToken
+	if err := r.db.Where("token = ?", token).First(&refreshToken).Error; err != nil {
+		return nil, err
+	}
+	return &refreshToken, nil
+}

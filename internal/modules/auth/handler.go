@@ -12,6 +12,11 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
+// LogoutRequest định nghĩa cấu trúc dữ liệu yêu cầu đăng xuất từ client.
+type LogoutRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
 // AuthHandler quản lý việc tiếp nhận các request HTTP cho Authentication.
 type AuthHandler struct {
 	authService *AuthService
@@ -45,8 +50,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// 3. Tạo JWT Token
-	token, err := h.authService.GenerateToken(user)
+	// 3. Tạo cặp Access Token và Refresh Token
+	accessToken, refreshToken, err := h.authService.GenerateTokenPair(user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Lỗi hệ thống khi tạo token xác thực",
@@ -54,14 +59,41 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// 4. Trả về token và thông tin cơ bản của User
+	// 4. Trả về cặp token và thông tin cơ bản của User
 	c.JSON(http.StatusOK, gin.H{
-		"token": token,
+		"access_token":  accessToken,
+		"refresh_token": refreshToken,
 		"user": gin.H{
 			"id":       user.ID,
 			"email":    user.Email,
 			"role":     user.Role,
 			"store_id": user.StoreID,
 		},
+	})
+}
+
+// Logout xử lý yêu cầu đăng xuất từ người dùng.
+func (h *AuthHandler) Logout(c *gin.Context) {
+	var req LogoutRequest
+
+	// 1. Validate dữ liệu đầu vào
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Yêu cầu đăng xuất thiếu refresh_token",
+		})
+		return
+	}
+
+	// 2. Gọi Service để thu hồi Refresh Token (xóa khỏi DB)
+	if err := h.authService.Logout(req.RefreshToken); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Lỗi hệ thống khi thực hiện đăng xuất",
+		})
+		return
+	}
+
+	// 3. Trả về kết quả thành công
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Đăng xuất thành công",
 	})
 }

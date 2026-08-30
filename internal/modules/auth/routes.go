@@ -13,6 +13,15 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, jwtSecret string) {
 
 	authGroup := router.Group("/api/v1/auth")
 	{
+		// Các route công khai không cần token
 		authGroup.POST("/login", authHandler.Login)
+		authGroup.POST("/logout", authHandler.Logout)
+
+		// Các route yêu cầu kiểm tra JWT Access Token
+		// protected := authGroup.Group("")
+		// protected.Use(AuthMiddleware(jwtSecret))
+		// {
+		// 	protected.GET("/me", authHandler.Me)
+		// }
 	}
 }
