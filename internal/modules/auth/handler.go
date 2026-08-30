@@ -17,6 +17,11 @@ type LogoutRequest struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`
 }
 
+// RefreshRequest định nghĩa cấu trúc dữ liệu làm mới token từ client.
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
 // AuthHandler quản lý việc tiếp nhận các request HTTP cho Authentication.
 type AuthHandler struct {
 	authService *AuthService
@@ -95,5 +100,33 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	// 3. Trả về kết quả thành công
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Đăng xuất thành công",
+	})
+}
+
+// Refresh xử lý yêu cầu làm mới Access Token và Refresh Token mới.
+func (h *AuthHandler) Refresh(c *gin.Context) {
+	var req RefreshRequest
+
+	// 1. Validate dữ liệu đầu vào
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Yêu cầu làm mới thiếu refresh_token",
+		})
+		return
+	}
+
+	// 2. Gọi Service để thực hiện xoay vòng token
+	accessToken, refreshToken, err := h.authService.Refresh(req.RefreshToken)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	// 3. Trả về cặp token mới
+	c.JSON(http.StatusOK, gin.H{
+		"access_token":  accessToken,
+		"refresh_token": refreshToken,
 	})
 }

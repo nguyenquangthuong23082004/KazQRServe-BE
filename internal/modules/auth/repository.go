@@ -41,10 +41,10 @@ func (r *UserRepository) DeleteRefreshToken(token string) error {
 	return r.db.Where("token = ?", token).Delete(&RefreshToken{}).Error
 }
 
-// FindRefreshToken tìm kiếm Refresh Token trong Database.
+// FindRefreshToken tìm kiếm Refresh Token trong Database (nạp sẵn thông tin User).
 func (r *UserRepository) FindRefreshToken(token string) (*RefreshToken, error) {
 	var refreshToken RefreshToken
-	if err := r.db.Where("token = ?", token).First(&refreshToken).Error; err != nil {
+	if err := r.db.Preload("User").Where("token = ?", token).First(&refreshToken).Error; err != nil {
 		return nil, err
 	}
 	return &refreshToken, nil

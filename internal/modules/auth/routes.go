@@ -14,8 +14,8 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, jwtSecret string) {
 
 	authGroup := router.Group("/api/v1/auth")
 	{
-		// Các route công khai không cần token
 		authGroup.POST("/login", authHandler.Login)
+		authGroup.POST("/refresh", authHandler.Refresh)
 		authGroup.POST("/logout", middleware.AuthMiddleware(jwtSecret), authHandler.Logout)
 	}
 }

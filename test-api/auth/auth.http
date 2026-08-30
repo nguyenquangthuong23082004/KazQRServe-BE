@@ -4,22 +4,36 @@
 
 ### 1. Đăng nhập để lấy cặp Access Token & Refresh Token
 # @name login
-# POST {{baseUrl}}/auth/login
-# Content-Type: {{contentType}}
-
-# {
-#   "email": "coffee_admin@example.com",
-#   "password": "123456"
-# }
-
-### 2. Lấy thông tin cá nhân (Protected - Cần Access Token)
-# GET {{baseUrl}}/auth/me
-# Authorization: Bearer {{login.response.body.access_token}}
-
-## 3. Đăng xuất (Logout - Cần truyền Refresh Token)
-POST {{baseUrl}}/auth/logout
+POST {{baseUrl}}/auth/login
 Content-Type: {{contentType}}
 
 {
-  "refresh_token": "3e09f21d2fc958804266790db9585f7dca748c14489a94b51d2c2ba58346f7c5"
+  "email": "coffee_admin@example.com",
+  "password": "123456"
+}
+
+### 2. Lấy danh sách danh mục (Protected - Cần Access Token)
+GET {{baseUrl}}/categories
+Authorization: Bearer {{login.response.body.access_token}}
+
+### 3. Làm mới Token (Refresh Token - Xoay vòng cặp Token mới)
+# @name refresh
+POST {{baseUrl}}/auth/refresh
+Content-Type: {{contentType}}
+
+{
+  "refresh_token": "{{login.response.body.refresh_token}}"
+}
+
+### 4. Truy cập lại bằng Access Token mới sau khi refresh
+GET {{baseUrl}}/categories
+Authorization: Bearer {{refresh.response.body.access_token}}
+
+### 5. Đăng xuất (Logout - Thu hồi Refresh Token)
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{refresh.response.body.access_token}}
+Content-Type: {{contentType}}
+
+{
+  "refresh_token": "{{refresh.response.body.refresh_token}}"
 }
