@@ -49,7 +49,7 @@ func (s *AuthService) GenerateTokenPair(user *User) (string, string, error) {
 		"user_id":  user.ID,
 		"role":     user.Role,
 		"store_id": user.StoreID,
-		"exp":      time.Now().Add(1 * time.Minute).Unix(), // Hạn ngắn: 15 phút
+		"exp":      time.Now().Add(15 * time.Minute).Unix(), // Hạn ngắn: 15 phút
 		"iat":      time.Now().Unix(),
 	}
 	accessTokenObj := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
