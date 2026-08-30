@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nguyenquangthuong23082004/KazQRServe-BE/internal/modules/auth"
+	"github.com/nguyenquangthuong23082004/KazQRServe-BE/internal/modules/menu"
 	"gorm.io/gorm"
 )
 
@@ -45,6 +46,7 @@ func (a *App) setUpRoutes() {
 
 	// Đăng ký routes cho các modules
 	auth.RegisterRoutes(a.router, a.db, jwtSecret)
+	menu.RegisterRoutes(a.router, a.db, jwtSecret)
 }
 
 // Run là hàm kích hoạt server (được gọi từ main.go)

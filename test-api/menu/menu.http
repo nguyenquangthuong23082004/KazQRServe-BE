@@ -1,0 +1,74 @@
+### Cấu hình biến dùng chung
+@baseUrl = http://localhost:8080/api/v1
+@contentType = application/json
+
+### 1. Đăng nhập với tài khoản Admin
+# @name adminLogin
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+  {
+    "email": "coffee_admin@example.com",
+    "password": "123456"
+  }
+
+### 2. Thêm mới danh mục món ăn (Thành công - Yêu cầu Admin Token)
+# @name createCategory
+POST {{baseUrl}}/categories
+Authorization: Bearer {{adminLogin.response.body.access_token}}
+Content-Type: {{contentType}}
+
+{
+  "name": "Cà Phê Ý (Espresso Bar)",
+  "rank": 1
+}
+
+### 3. Lấy danh sách toàn bộ danh mục của Store (Dùng token Admin)
+GET {{baseUrl}}/categories
+Authorization: Bearer {{adminLogin.response.body.access_token}}
+
+### 4. Lấy chi tiết danh mục vừa tạo (Dùng token Admin)
+GET {{baseUrl}}/categories/{{createCategory.response.body.ID}}
+Authorization: Bearer {{adminLogin.response.body.access_token}}
+
+### 5. Cập nhật thông tin danh mục vừa tạo (Thành công - Dùng token Admin)
+PUT {{baseUrl}}/categories/{{createCategory.response.body.ID}}
+Authorization: Bearer {{adminLogin.response.body.access_token}}
+Content-Type: {{contentType}}
+
+{
+  "name": "Cà Phê Đặc Biệt (Sữa Đá)",
+  "rank": 5
+}
+
+### 6. Đăng nhập với tài khoản Staff
+# @name staffLogin
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "coffee_staff@example.com",
+  "password": "123456"
+}
+
+### 7. Thử cập nhật danh mục bằng quyền Staff (Thất bại -> 403 Forbidden)
+PUT {{baseUrl}}/categories/{{createCategory.response.body.ID}}
+Authorization: Bearer {{staffLogin.response.body.access_token}}
+Content-Type: {{contentType}}
+
+{
+  "name": "Trà Sữa Trân Châu",
+  "rank": 2
+}
+
+### 8. Thử xóa danh mục bằng quyền Staff (Thất bại -> 403 Forbidden)
+DELETE {{baseUrl}}/categories/{{createCategory.response.body.ID}}
+Authorization: Bearer {{staffLogin.response.body.access_token}}
+
+### 9. Xóa danh mục bằng quyền Admin (Thành công -> 200 OK)
+DELETE {{baseUrl}}/categories/{{createCategory.response.body.ID}}
+Authorization: Bearer {{adminLogin.response.body.access_token}}
+
+### 10. Thử lấy lại chi tiết danh mục vừa xóa (Thất bại -> 404 Not Found)
+GET {{baseUrl}}/categories/{{createCategory.response.body.ID}}
+Authorization: Bearer {{adminLogin.response.body.access_token}}

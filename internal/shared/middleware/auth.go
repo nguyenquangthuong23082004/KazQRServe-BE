@@ -69,3 +69,39 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 		c.Next() // Cho phép request đi tiếp vào handler xử lý tiếp theo
 	}
 }
+
+// RequireRoles kiểm tra xem role của user hiện tại có nằm trong danh sách các role được phép truy cập hay không.
+func RequireRoles(allowedRoles ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, exists := c.Get("role")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "Không tìm thấy thông tin quyền truy cập trong hệ thống",
+			})
+			c.Abort()
+			return
+		}
+
+		userRole, ok := role.(string)
+		if !ok {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": "Thông tin quyền truy cập không hợp lệ",
+			})
+			c.Abort()
+			return
+		}
+
+		// Kiểm tra xem role của user có nằm trong danh sách allowedRoles không
+		for _, r := range allowedRoles {
+			if userRole == r {
+				c.Next()
+				return
+			}
+		}
+
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "Bạn không có quyền thực hiện hành động này",
+		})
+		c.Abort()
+	}
+}

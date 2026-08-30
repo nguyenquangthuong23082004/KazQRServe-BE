@@ -2,6 +2,7 @@ package auth
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/nguyenquangthuong23082004/KazQRServe-BE/internal/shared/middleware"
 	"gorm.io/gorm"
 )
 
@@ -15,6 +16,6 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, jwtSecret string) {
 	{
 		// Các route công khai không cần token
 		authGroup.POST("/login", authHandler.Login)
-		authGroup.POST("/logout", authHandler.Logout)
+		authGroup.POST("/logout", middleware.AuthMiddleware(jwtSecret), authHandler.Logout)
 	}
 }

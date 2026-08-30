@@ -16,10 +16,10 @@
 # GET {{baseUrl}}/auth/me
 # Authorization: Bearer {{login.response.body.access_token}}
 
-### 3. Đăng xuất (Logout - Cần truyền Refresh Token)
-# POST {{baseUrl}}/auth/logout
-# Content-Type: {{contentType}}
+## 3. Đăng xuất (Logout - Cần truyền Refresh Token)
+POST {{baseUrl}}/auth/logout
+Content-Type: {{contentType}}
 
-# {
-#   "refresh_token": "3e09f21d2fc958804266790db9585f7dca748c14489a94b51d2c2ba58346f7c5"
-# }
+{
+  "refresh_token": "3e09f21d2fc958804266790db9585f7dca748c14489a94b51d2c2ba58346f7c5"
+}
