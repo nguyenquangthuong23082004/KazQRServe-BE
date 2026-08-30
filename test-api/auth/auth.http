@@ -1,0 +1,48 @@
+### Cấu hình biến dùng chung
+@baseUrl = http://localhost:8080/api/v1
+@contentType = application/json
+
+### 1. Đăng nhập thành công (Tài khoản Coffee Admin)
+# POST {{baseUrl}}/auth/login
+# Content-Type: {{contentType}}
+
+# {
+#   "email": "coffee_admin@example.com",
+#   "password": "123456"
+# }
+
+### 2. Đăng nhập thành công (Tài khoản Coffee Staff)
+# POST {{baseUrl}}/auth/login
+# Content-Type: {{contentType}}
+
+# {
+#   "email": "coffee_staff@example.com",
+#   "password": "123456"
+# }
+
+### 3. Đăng nhập thành công (Tài khoản Restaurant Admin)
+# POST {{baseUrl}}/auth/login
+# Content-Type: {{contentType}}
+
+# {
+#   "email": "restaurant_admin@example.com",
+#   "password": "123456"
+# }
+
+### 4. Đăng nhập thất bại (Sai mật khẩu)
+# POST {{baseUrl}}/auth/login
+# Content-Type: {{contentType}}
+
+# {
+#   "email": "coffee_admin@example.com",
+#   "password": "sai_mat_khau"
+# }
+
+### 5. Đăng nhập thất bại (Email không đúng định dạng)
+# POST {{baseUrl}}/auth/login
+# Content-Type: {{contentType}}
+
+# {
+#   "email": "coffee_admin_loi",
+#   "password": "123456"
+# }
