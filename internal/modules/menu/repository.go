@@ -73,3 +73,40 @@ func NewProductRepository(db *gorm.DB) *ProductRepository {
 func (r *ProductRepository) Create(product *Product) error {
 	return r.db.Create(product).Error
 }
+
+// FindAllByStoreID lấy danh sách sản phẩm thuộc storeID.
+func (r *ProductRepository) FindAllByStoreID(storeID uint) ([]Product, error) {
+	var products []Product
+	err := r.db.
+		Joins("JOIN categories ON categories.id = products.category_id").
+		Where("categories.store_id = ?", storeID).
+		Preload("Category").
+		Find(&products).
+		Error
+	return products, err
+}
+
+// FindByIDAndStoreID tìm 1 sản phẩm theo ID và storeID.
+func (r *ProductRepository) FindByIDAndStoreID(id uint, storeID uint) (*Product, error) {
+	var product Product
+	err := r.db.
+		Joins("JOIN categories ON categories.id = products.category_id").
+		Where("products.id = ? AND categories.store_id = ?", id, storeID).
+		Preload("Category").
+		First(&product).
+		Error
+	if err != nil {
+		return nil, err
+	}
+	return &product, nil
+}
+
+// Update cập nhật thông tin sản phẩm.
+func (r *ProductRepository) Update(product *Product) error {
+	return r.db.Save(product).Error
+}
+
+// Delete xóa sản phẩm theo ID.
+func (r *ProductRepository) Delete(id uint) error {
+	return r.db.Delete(&Product{}, id).Error
+}

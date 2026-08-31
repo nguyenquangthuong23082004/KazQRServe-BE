@@ -111,3 +111,59 @@ func (s *ProductService) CreateProduct(name string, description string, price fl
 	product.Category = category
 	return product, nil
 }
+
+// GetProducts trả về danh sách sản phẩm thuộc storeID.
+func (s *ProductService) GetProducts(storeID uint) ([]Product, error) {
+	return s.productRepo.FindAllByStoreID(storeID)
+}
+
+// GetProductByID trả về sản phẩm cụ thể theo ID và storeID.
+func (s *ProductService) GetProductByID(id uint, storeID uint) (*Product, error) {
+	return s.productRepo.FindByIDAndStoreID(id, storeID)
+}
+
+// UpdateProduct cập nhật thông tin sản phẩm.
+func (s *ProductService) UpdateProduct(id uint, storeID uint, name string, description string, price float64, imageURL string, isAvailable bool, categoryID uint) (*Product, error) {
+	// 1. Kiểm tra xem sản phẩm có tồn tại và thuộc storeID này hay không
+	product, err := s.productRepo.FindByIDAndStoreID(id, storeID)
+	if err != nil {
+		return nil, errors.New("sản phẩm không tồn tại hoặc không thuộc cửa hàng của bạn")
+	}
+
+	// 2. Nếu đổi danh mục, kiểm tra xem danh mục mới có thuộc storeID này không
+	var category *Category
+	if product.CategoryID != categoryID {
+		category, err = s.categoryRepo.FindByIDAndStoreID(categoryID, storeID)
+		if err != nil {
+			return nil, errors.New("danh mục mới không tồn tại hoặc không thuộc cửa hàng của bạn")
+		}
+		product.CategoryID = categoryID
+		product.Category = category
+	}
+
+	// 3. Cập nhật thông tin khác
+	product.Name = name
+	product.Description = description
+	product.Price = price
+	product.ImageURL = imageURL
+	product.IsAvailable = isAvailable
+
+	// 4. Lưu thay đổi
+	if err := s.productRepo.Update(product); err != nil {
+		return nil, err
+	}
+
+	return product, nil
+}
+
+// DeleteProduct xóa sản phẩm.
+func (s *ProductService) DeleteProduct(id uint, storeID uint) error {
+	// 1. Kiểm tra xem sản phẩm có tồn tại và thuộc storeID này không
+	_, err := s.productRepo.FindByIDAndStoreID(id, storeID)
+	if err != nil {
+		return errors.New("sản phẩm không tồn tại hoặc không thuộc cửa hàng của bạn")
+	}
+
+	// 2. Xóa
+	return s.productRepo.Delete(id)
+}

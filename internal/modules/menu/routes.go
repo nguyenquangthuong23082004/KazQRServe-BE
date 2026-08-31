@@ -38,8 +38,14 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, jwtSecret string) {
 	{
 		productGroup.Use(middleware.AuthMiddleware(jwtSecret))
 		{
-			// Chỉ tài khoản có quyền admin mới được phép thêm sản phẩm mới
+			// Admin & Staff có quyền xem danh sách và chi tiết sản phẩm
+			productGroup.GET("", middleware.RequireRoles("admin", "staff"), productHandler.List)
+			productGroup.GET("/:id", middleware.RequireRoles("admin", "staff"), productHandler.Get)
+
+			// Chỉ tài khoản có quyền admin mới được phép thêm mới, cập nhật, xóa sản phẩm
 			productGroup.POST("", middleware.RequireRoles("admin"), productHandler.Create)
+			productGroup.PUT("/:id", middleware.RequireRoles("admin"), productHandler.Update)
+			productGroup.DELETE("/:id", middleware.RequireRoles("admin"), productHandler.Delete)
 		}
 	}
 }

@@ -339,3 +339,206 @@ func (h *ProductHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, product)
 }
 
+// UpdateProductRequest định nghĩa dữ liệu cập nhật sản phẩm.
+type UpdateProductRequest struct {
+	Name        string  `json:"name" binding:"required"`
+	Description string  `json:"description"`
+	Price       float64 `json:"price" binding:"required,gte=0"`
+	ImageURL    string  `json:"image_url"`
+	IsAvailable *bool   `json:"is_available" binding:"required"`
+	CategoryID  uint    `json:"category_id" binding:"required"`
+}
+
+// List xử lý yêu cầu lấy danh sách toàn bộ sản phẩm của cửa hàng.
+func (h *ProductHandler) List(c *gin.Context) {
+	// 1. Lấy store_id từ Context (đã được lưu ở AuthMiddleware)
+	storeIDVal, exists := c.Get("store_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Không tìm thấy thông tin cửa hàng của người dùng",
+		})
+		return
+	}
+
+	var storeID uint
+	switch v := storeIDVal.(type) {
+	case float64:
+		storeID = uint(v)
+	case uint:
+		storeID = v
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Định dạng mã cửa hàng không hợp lệ",
+		})
+		return
+	}
+
+	// 2. Gọi Service để lấy danh sách
+	products, err := h.service.GetProducts(storeID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Không thể lấy danh sách sản phẩm",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, products)
+}
+
+// Get xử lý yêu cầu lấy thông tin chi tiết của một sản phẩm.
+func (h *ProductHandler) Get(c *gin.Context) {
+	// 1. Lấy id từ URL param
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Mã sản phẩm không hợp lệ",
+		})
+		return
+	}
+
+	// 2. Lấy store_id từ Context
+	storeIDVal, exists := c.Get("store_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Không tìm thấy thông tin cửa hàng của người dùng",
+		})
+		return
+	}
+
+	var storeID uint
+	switch v := storeIDVal.(type) {
+	case float64:
+		storeID = uint(v)
+	case uint:
+		storeID = v
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Định dạng mã cửa hàng không hợp lệ",
+		})
+		return
+	}
+
+	// 3. Gọi Service để lấy thông tin chi tiết
+	product, err := h.service.GetProductByID(uint(id), storeID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Không tìm thấy sản phẩm hoặc sản phẩm không thuộc cửa hàng của bạn",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, product)
+}
+
+// Update xử lý yêu cầu cập nhật thông tin sản phẩm.
+func (h *ProductHandler) Update(c *gin.Context) {
+	// 1. Lấy id từ URL param
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Mã sản phẩm không hợp lệ",
+		})
+		return
+	}
+
+	// 2. Validate dữ liệu JSON gửi lên
+	var req UpdateProductRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Thông tin cập nhật sản phẩm không hợp lệ (tên, giá >= 0, category_id và trạng thái là bắt buộc)",
+		})
+		return
+	}
+
+	// 3. Lấy store_id từ Context
+	storeIDVal, exists := c.Get("store_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Không tìm thấy thông tin cửa hàng của người dùng",
+		})
+		return
+	}
+
+	var storeID uint
+	switch v := storeIDVal.(type) {
+	case float64:
+		storeID = uint(v)
+	case uint:
+		storeID = v
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Định dạng mã cửa hàng không hợp lệ",
+		})
+		return
+	}
+
+	// 4. Gọi Service thực hiện cập nhật
+	product, err := h.service.UpdateProduct(
+		uint(id),
+		storeID,
+		req.Name,
+		req.Description,
+		req.Price,
+		req.ImageURL,
+		*req.IsAvailable,
+		req.CategoryID,
+	)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, product)
+}
+
+// Delete xử lý yêu cầu xóa một sản phẩm.
+func (h *ProductHandler) Delete(c *gin.Context) {
+	// 1. Lấy id từ URL param
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Mã sản phẩm không hợp lệ",
+		})
+		return
+	}
+
+	// 2. Lấy store_id từ Context
+	storeIDVal, exists := c.Get("store_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Không tìm thấy thông tin cửa hàng của người dùng",
+		})
+		return
+	}
+
+	var storeID uint
+	switch v := storeIDVal.(type) {
+	case float64:
+		storeID = uint(v)
+	case uint:
+		storeID = v
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Định dạng mã cửa hàng không hợp lệ",
+		})
+		return
+	}
+
+	// 3. Gọi Service thực hiện xóa
+	if err := h.service.DeleteProduct(uint(id), storeID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Xóa sản phẩm thành công",
+	})
+}
+
