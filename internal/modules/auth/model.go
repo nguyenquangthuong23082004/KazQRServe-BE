@@ -22,4 +22,5 @@ type RefreshToken struct {
 	UserID    uint      `gorm:"column:user_id;not null" json:"user_id"`
 	User      *User     `gorm:"foreignKey:UserID;constraint:onUpdate:CASCADE,onDelete:CASCADE" json:"user,omitempty"`
 	ExpiresAt time.Time `gorm:"column:expires_at;not null" json:"expires_at"`
+	IsRevoked bool      `gorm:"column:is_revoked;type:bool;not null;default:false" json:"is_revoked"`
 }

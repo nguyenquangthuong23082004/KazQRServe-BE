@@ -261,3 +261,81 @@ func (h *CategoryHandler) Delete(c *gin.Context) {
 		"message": "Xóa danh mục thành công",
 	})
 }
+
+// CreateProductRequest định nghĩa dữ liệu đầu vào khi tạo Sản phẩm.
+type CreateProductRequest struct {
+	Name        string  `json:"name" binding:"required"`
+	Description string  `json:"description"`
+	Price       float64 `json:"price" binding:"required,gte=0"`
+	ImageURL    string  `json:"image_url"`
+	IsAvailable *bool   `json:"is_available" binding:"required"`
+	CategoryID  uint    `json:"category_id" binding:"required"`
+}
+
+// ProductHandler quản lý các request HTTP liên quan đến Sản phẩm.
+type ProductHandler struct {
+	service *ProductService
+}
+
+// NewProductHandler khởi tạo ProductHandler nhận vào service tương ứng.
+func NewProductHandler(service *ProductService) *ProductHandler {
+	return &ProductHandler{
+		service: service,
+	}
+}
+
+// Create xử lý yêu cầu thêm mới một Sản phẩm.
+func (h *ProductHandler) Create(c *gin.Context) {
+	var req CreateProductRequest
+
+	// 1. Validate dữ liệu JSON gửi lên
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Thông tin sản phẩm không hợp lệ (tên, giá >= 0, category_id và trạng thái là bắt buộc)",
+		})
+		return
+	}
+
+	// 2. Lấy store_id từ Context (đã được lưu ở AuthMiddleware)
+	storeIDVal, exists := c.Get("store_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Không tìm thấy thông tin cửa hàng của người dùng",
+		})
+		return
+	}
+
+	var storeID uint
+	switch v := storeIDVal.(type) {
+	case float64:
+		storeID = uint(v)
+	case uint:
+		storeID = v
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Định dạng mã cửa hàng không hợp lệ",
+		})
+		return
+	}
+
+	// 3. Gọi Service xử lý nghiệp vụ
+	product, err := h.service.CreateProduct(
+		req.Name,
+		req.Description,
+		req.Price,
+		req.ImageURL,
+		*req.IsAvailable,
+		req.CategoryID,
+		storeID,
+	)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	// 4. Trả về kết quả
+	c.JSON(http.StatusCreated, product)
+}
+

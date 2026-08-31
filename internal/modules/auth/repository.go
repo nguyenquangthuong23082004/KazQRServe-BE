@@ -36,9 +36,9 @@ func (r *UserRepository) CreateRefreshToken(token *RefreshToken) error {
 	return r.db.Create(token).Error
 }
 
-// DeleteRefreshToken xóa Refresh Token khỏi Database (dùng khi Logout).
-func (r *UserRepository) DeleteRefreshToken(token string) error {
-	return r.db.Where("token = ?", token).Delete(&RefreshToken{}).Error
+// RevokeRefreshToken cập nhật trạng thái Refresh Token thành đã thu hồi (is_revoked = true).
+func (r *UserRepository) RevokeRefreshToken(token string) error {
+	return r.db.Model(&RefreshToken{}).Where("token = ?", token).Update("is_revoked", true).Error
 }
 
 // FindRefreshToken tìm kiếm Refresh Token trong Database (nạp sẵn thông tin User).

@@ -56,3 +56,20 @@ func (r *CategoryRepository) Delete(id uint, storeID uint) error {
 		Delete(&Category{}).
 		Error
 }
+
+// ProductRepository chịu trách nhiệm truy vấn bảng products trong database.
+type ProductRepository struct {
+	db *gorm.DB
+}
+
+// NewProductRepository khởi tạo ProductRepository mới nhận kết nối DB.
+func NewProductRepository(db *gorm.DB) *ProductRepository {
+	return &ProductRepository{
+		db: db,
+	}
+}
+
+// Create lưu một sản phẩm (Product) mới vào database.
+func (r *ProductRepository) Create(product *Product) error {
+	return r.db.Create(product).Error
+}

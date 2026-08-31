@@ -1,5 +1,7 @@
 package menu
 
+import "errors"
+
 // CategoryService chịu trách nhiệm xử lý các logic nghiệp vụ (business logic) liên quan đến Danh mục.
 type CategoryService struct {
 	repo *CategoryRepository
@@ -67,4 +69,45 @@ func (s *CategoryService) DeleteCategory(id uint, storeID uint) error {
 
 	// 2. Thực hiện xóa
 	return s.repo.Delete(id, storeID)
+}
+
+// ProductService chịu trách nhiệm xử lý các logic nghiệp vụ (business logic) liên quan đến Sản phẩm.
+type ProductService struct {
+	productRepo  *ProductRepository
+	categoryRepo *CategoryRepository
+}
+
+// NewProductService khởi tạo ProductService mới nhận các repo tương ứng.
+func NewProductService(productRepo *ProductRepository, categoryRepo *CategoryRepository) *ProductService {
+	return &ProductService{
+		productRepo:  productRepo,
+		categoryRepo: categoryRepo,
+	}
+}
+
+// CreateProduct xử lý việc thêm mới một Sản phẩm cho cửa hàng.
+func (s *ProductService) CreateProduct(name string, description string, price float64, imageURL string, isAvailable bool, categoryID uint, storeID uint) (*Product, error) {
+	// 1. Xác thực xem CategoryID có tồn tại và thuộc storeID này hay không
+	category, err := s.categoryRepo.FindByIDAndStoreID(categoryID, storeID)
+	if err != nil {
+		return nil, errors.New("danh mục không tồn tại hoặc không thuộc cửa hàng của bạn")
+	}
+
+	// 2. Tạo đối tượng Product
+	product := &Product{
+		Name:        name,
+		Description: description,
+		Price:       price,
+		ImageURL:    imageURL,
+		IsAvailable: isAvailable,
+		CategoryID:  categoryID,
+	}
+
+	// 3. Lưu vào Database
+	if err := s.productRepo.Create(product); err != nil {
+		return nil, err
+	}
+
+	product.Category = category
+	return product, nil
 }

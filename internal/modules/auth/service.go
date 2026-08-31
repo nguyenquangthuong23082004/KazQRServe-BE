@@ -80,9 +80,9 @@ func (s *AuthService) GenerateTokenPair(user *User) (string, string, error) {
 	return accessToken, refreshTokenStr, nil
 }
 
-// Logout thu hồi Refresh Token bằng cách xóa nó khỏi Database.
+// Logout thu hồi Refresh Token bằng cách chuyển trạng thái is_revoked thành true.
 func (s *AuthService) Logout(refreshToken string) error {
-	return s.userRepository.DeleteRefreshToken(refreshToken)
+	return s.userRepository.RevokeRefreshToken(refreshToken)
 }
 
 // Refresh xác thực Refresh Token cũ và cấp cặp Access Token & Refresh Token mới (Rotation).
@@ -90,26 +90,31 @@ func (s *AuthService) Refresh(refreshTokenStr string) (string, string, error) {
 	// 1. Tìm Refresh Token trong DB
 	rfToken, err := s.userRepository.FindRefreshToken(refreshTokenStr)
 	if err != nil {
-		return "", "", errors.New("refresh token không hợp lệ hoặc đã hết hạn")
+		return "", "", errors.New("refresh token không hợp lệ hoặc không tồn tại")
 	}
 
-	// 2. Kiểm tra xem Refresh Token có bị hết hạn không
+	// 2. Kiểm tra xem Refresh Token đã bị thu hồi trước đó chưa
+	if rfToken.IsRevoked {
+		return "", "", errors.New("refresh token đã bị thu hồi, vui lòng đăng nhập lại")
+	}
+
+	// 3. Kiểm tra xem Refresh Token có bị hết hạn không
 	if time.Now().After(rfToken.ExpiresAt) {
-		// Xóa token hết hạn khỏi DB để dọn dẹp
-		_ = s.userRepository.DeleteRefreshToken(refreshTokenStr)
+		// Thu hồi token hết hạn
+		_ = s.userRepository.RevokeRefreshToken(refreshTokenStr)
 		return "", "", errors.New("refresh token đã hết hạn, vui lòng đăng nhập lại")
 	}
 
-	// 3. Đảm bảo thông tin User được nạp thành công
+	// 4. Đảm bảo thông tin User được nạp thành công
 	if rfToken.User == nil {
 		return "", "", errors.New("không tìm thấy thông tin người dùng tương ứng")
 	}
 
-	// 4. Xóa Refresh Token cũ (Refresh Token Rotation để bảo mật)
-	if err := s.userRepository.DeleteRefreshToken(refreshTokenStr); err != nil {
+	// 5. Thu hồi Refresh Token cũ (Refresh Token Rotation để bảo mật)
+	if err := s.userRepository.RevokeRefreshToken(refreshTokenStr); err != nil {
 		return "", "", err
 	}
 
-	// 5. Tạo cặp token mới
+	// 6. Tạo cặp token mới
 	return s.GenerateTokenPair(rfToken.User)
 }
