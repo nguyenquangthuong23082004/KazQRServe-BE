@@ -8,12 +8,12 @@ import (
 
 func SeedOrderItems(db *gorm.DB) error {
 	var pendingOrder order.Order
-	if err := db.Where("status = ?", "pending").First(&pendingOrder).Error; err != nil {
+	if err := db.Where("status = ?", order.OrderStatusPending).First(&pendingOrder).Error; err != nil {
 		return err
 	}
 
 	var completedOrder order.Order
-	if err := db.Where("status = ?", "completed").First(&completedOrder).Error; err != nil {
+	if err := db.Where("status = ?", order.OrderStatusCompleted).First(&completedOrder).Error; err != nil {
 		return err
 	}
 
@@ -29,18 +29,20 @@ func SeedOrderItems(db *gorm.DB) error {
 
 	orderItems := []order.OrderItem{
 		{
-			Quantity:      2,
-			PriceSnapshot: espresso.Price,
-			Note:          "Ít đường",
-			OrderID:       pendingOrder.ID,
-			ProductID:     espresso.ID,
+			Quantity:            2,
+			PriceSnapshot:       espresso.Price,
+			ProductNameSnapshot: espresso.Name,
+			Note:                "Ít đường",
+			OrderID:             pendingOrder.ID,
+			ProductID:           espresso.ID,
 		},
 		{
-			Quantity:      1,
-			PriceSnapshot: cappuccino.Price,
-			Note:          "Nóng",
-			OrderID:       completedOrder.ID,
-			ProductID:     cappuccino.ID,
+			Quantity:            1,
+			PriceSnapshot:       cappuccino.Price,
+			ProductNameSnapshot: cappuccino.Name,
+			Note:                "Nóng",
+			OrderID:             completedOrder.ID,
+			ProductID:           cappuccino.ID,
 		},
 	}
 

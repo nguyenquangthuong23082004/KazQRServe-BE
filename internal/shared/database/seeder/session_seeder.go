@@ -19,18 +19,22 @@ func SeedSessions(db *gorm.DB) error {
 		return err
 	}
 
+	now := time.Now()
+
 	sessions := []order.Session{
 		{
-			Status:      "active",
-			TotalAmount: 0.0,
+			Status:      order.SessionStatusActive,
+			TotalAmount: 60000.0,
 			TableID:     table1.ID,
+			StoreID:     table1.StoreID,
 		},
 		{
-			Status:      "inactive",
-			TotalAmount: 70000.0,
-			PaidMethod:  "tiền mặt",
-			PaidAt:      time.Now(),
+			Status:      order.SessionStatusClosed,
+			TotalAmount: 45000.0,
+			PaidMethod:  "cash",
+			PaidAt:      &now,
 			TableID:     table2.ID,
+			StoreID:     table2.StoreID,
 		},
 	}
 

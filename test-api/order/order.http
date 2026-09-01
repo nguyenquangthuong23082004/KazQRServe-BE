@@ -1,0 +1,149 @@
+@baseUrl = http://localhost:8080/api/v1
+@contentType = application/json
+
+### 1. Đăng nhập Admin Store 1
+# @name adminLogin
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "coffee_admin@example.com",
+  "password": "123456"
+}
+
+### 2. Đăng nhập Staff Store 1
+# @name staffLogin
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "coffee_staff@example.com",
+  "password": "123456"
+}
+
+### 3. Tạo Bàn 01 để lấy uuid token
+# @name createTable
+POST {{baseUrl}}/tables
+Authorization: Bearer {{adminLogin.response.body.access_token}}
+Content-Type: {{contentType}}
+
+{
+  "name": "Bàn Order Test 01",
+  "area": "Tầng 1",
+  "capacity": 4
+}
+
+### 4. Tạo Danh mục món ăn
+# @name createCategory
+POST {{baseUrl}}/categories
+Authorization: Bearer {{adminLogin.response.body.access_token}}
+Content-Type: {{contentType}}
+
+{
+  "name": "Đồ Uống Test Order",
+  "rank": 1
+}
+
+### 5. Tạo Sản phẩm 1 (Cà Phê Muối)
+# @name createProduct1
+POST {{baseUrl}}/products
+Authorization: Bearer {{adminLogin.response.body.access_token}}
+Content-Type: {{contentType}}
+
+{
+  "name": "Cà Phê Muối Chợ Bến Thành",
+  "price": 32000.00,
+  "is_available": true,
+  "category_id": {{createCategory.response.body.ID}}
+}
+
+### 6. Tạo Sản phẩm 2 (Trà Đào Cam Sả)
+# @name createProduct2
+POST {{baseUrl}}/products
+Authorization: Bearer {{adminLogin.response.body.access_token}}
+Content-Type: {{contentType}}
+
+{
+  "name": "Trà Đào Cam Sả Mát Lạnh",
+  "price": 38000.00,
+  "is_available": true,
+  "category_id": {{createCategory.response.body.ID}}
+}
+
+### -------------------------------------------------------------
+### 🌟 LUỒNG KHÁCH VÃNG LAI QUÉT QR ĐẶT MÓN & DUYỆT ĐƠN
+### -------------------------------------------------------------
+
+### 7. Public API: Khách quét QR Bàn 01 Đặt món lượt 1 (Không cần Login Auth)
+# @name customerOrder1
+POST {{baseUrl}}/public/orders
+Content-Type: {{contentType}}
+
+{
+  "table_token": "{{createTable.response.body.uuid}}",
+  "note": "Cho 1 ly ít đường",
+  "items": [
+    {
+      "product_id": {{createProduct1.response.body.ID}},
+      "quantity": 2,
+      "note": "Ít đá"
+    },
+    {
+      "product_id": {{createProduct2.response.body.ID}},
+      "quantity": 1,
+      "note": "Đầy đủ topping"
+    }
+  ]
+}
+
+### 8. Staff: Xem danh sách các Đơn hàng đang chờ duyệt (status = pending)
+GET {{baseUrl}}/orders?status=pending
+Authorization: Bearer {{staffLogin.response.body.access_token}}
+
+### 9. Staff: Duyệt đơn lượt 1 của Bàn 01 (status -> confirmed)
+PATCH {{baseUrl}}/orders/{{customerOrder1.response.body.ID}}/status
+Authorization: Bearer {{staffLogin.response.body.access_token}}
+Content-Type: {{contentType}}
+
+{
+  "status": "confirmed"
+}
+
+### 10. Public API: Khách ngồi tại Bàn 01 Đặt món lượt 2 (Gọi thêm món)
+# @name customerOrder2
+POST {{baseUrl}}/public/orders
+Content-Type: {{contentType}}
+
+{
+  "table_token": "{{createTable.response.body.uuid}}",
+  "note": "Gọi thêm món lượt 2",
+  "items": [
+    {
+      "product_id": {{createProduct1.response.body.ID}},
+      "quantity": 1,
+      "note": "Không đường"
+    }
+  ]
+}
+
+### 11. Staff: Duyệt đơn lượt 2 của Bàn 01 (status -> confirmed)
+PATCH {{baseUrl}}/orders/{{customerOrder2.response.body.ID}}/status
+Authorization: Bearer {{staffLogin.response.body.access_token}}
+Content-Type: {{contentType}}
+
+{
+  "status": "confirmed"
+}
+
+### 12. Staff/Thu ngân: Xem chi tiết Phiên làm việc & Tổng Bill hiện tại của Bàn 01
+GET {{baseUrl}}/tables/7/session
+Authorization: Bearer {{staffLogin.response.body.access_token}}
+
+### 13. Thu ngân: Tính tiền, Thanh toán & Đóng phiên bàn (Checkout)
+POST {{baseUrl}}/tables/7/checkout
+Authorization: Bearer {{staffLogin.response.body.access_token}}
+Content-Type: {{contentType}}
+
+{
+  "payment_method": "cash"
+}

@@ -7,23 +7,31 @@ import (
 
 func SeedOrders(db *gorm.DB) error {
 	var activeSession order.Session
-	if err := db.Where("status = ?", "active").First(&activeSession).Error; err != nil {
+	if err := db.Where("status = ?", order.SessionStatusActive).First(&activeSession).Error; err != nil {
 		return err
 	}
 
-	var inactiveSession order.Session
-	if err := db.Where("status = ?", "inactive").First(&inactiveSession).Error; err != nil {
+	var closedSession order.Session
+	if err := db.Where("status = ?", order.SessionStatusClosed).First(&closedSession).Error; err != nil {
 		return err
 	}
 
 	orders := []order.Order{
 		{
-			Status:    "pending",
-			SessionID: activeSession.ID,
+			Status:      order.OrderStatusPending,
+			TotalAmount: 60000.0,
+			Note:        "Đơn đặt hàng chờ duyệt",
+			SessionID:   activeSession.ID,
+			TableID:     activeSession.TableID,
+			StoreID:     activeSession.StoreID,
 		},
 		{
-			Status:    "completed",
-			SessionID: inactiveSession.ID,
+			Status:      order.OrderStatusCompleted,
+			TotalAmount: 45000.0,
+			Note:        "Đơn hàng đã hoàn thành",
+			SessionID:   closedSession.ID,
+			TableID:     closedSession.TableID,
+			StoreID:     closedSession.StoreID,
 		},
 	}
 
