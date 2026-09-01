@@ -1,0 +1,75 @@
+@baseUrl = http://localhost:8080/api/v1
+@contentType = application/json
+
+### 1. Đăng nhập Admin Store 1
+# @name adminLogin
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "coffee_admin@example.com",
+  "password": "123456"
+  
+}
+
+### 2. Đăng nhập Staff Store 1
+# @name staffLogin
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "coffee_staff@example.com",
+  "password": "123456"
+}
+
+### 3. Tạo mới Bàn 01 (Dùng token Admin -> Thành công 201 Created)
+# @name createTable
+POST {{baseUrl}}/tables
+Authorization: Bearer {{adminLogin.response.body.access_token}}
+Content-Type: {{contentType}}
+
+{
+  "name": "Bàn 01",
+  "area": "Tầng 1 - Trong nhà",
+  "capacity": 4
+}
+
+### 4. Lấy danh sách tất cả các bàn trong Store (Quyền Staff / Admin -> 200 OK)
+GET {{baseUrl}}/tables
+Authorization: Bearer {{staffLogin.response.body.access_token}}
+
+### 5. Cập nhật trạng thái Bàn 01 sang 'occupied' (Đang có khách -> 200 OK)
+PATCH {{baseUrl}}/tables/{{createTable.response.body.id}}/status
+Authorization: Bearer {{staffLogin.response.body.access_token}}
+Content-Type: {{contentType}}
+
+{
+  "status": "occupied"
+}
+
+### 6. Cập nhật trạng thái Bàn 01 về 'available' (Trống -> 200 OK)
+PATCH {{baseUrl}}/tables/5/status
+Authorization: Bearer {{staffLogin.response.body.access_token}}
+Content-Type: {{contentType}}
+
+{
+  "status": "available"
+}
+
+### 7. Public API: Khách vãng lai quét QR Code tại bàn (Không cần Login Auth)
+GET {{baseUrl}}/public/tables/verify?token={{createTable.response.body.uuid}}
+
+### 8. Thử tạo bàn bằng quyền Staff (Thất bại -> 403 Forbidden)
+POST {{baseUrl}}/tables
+Authorization: Bearer {{staffLogin.response.body.access_token}}
+Content-Type: {{contentType}}
+
+{
+  "name": "Bàn Hack Quyền",
+  "capacity": 2
+}
+
+### 9. Xóa bàn 01 (Admin -> 200 OK)
+DELETE {{baseUrl}}/tables/{{createTable.response.body.id}}
+Authorization: Bearer {{adminLogin.response.body.access_token}}
+
