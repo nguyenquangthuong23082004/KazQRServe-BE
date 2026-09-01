@@ -20,6 +20,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, jwtSecret string) {
 	publicGroup := router.Group("/api/v1/public/orders")
 	{
 		publicGroup.POST("", handler.CreateCustomerOrder)
+		publicGroup.GET("/session", handler.GetCustomerSession)
 	}
 
 	// 2. Protected Routes (Dành cho Admin / Staff quản trị)

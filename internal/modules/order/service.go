@@ -252,3 +252,19 @@ func (s *OrderService) CheckoutSession(dto CheckoutSessionDTO) (*Session, error)
 
 	return fullSession, nil
 }
+
+// GetCustomerSessionByToken (Public API) cho phép khách hàng xem chi tiết phiên đặt món của bàn mình qua mã QR token
+func (s *OrderService) GetCustomerSessionByToken(tableToken string) (*Session, error) {
+	tbl, err := s.tableRepo.FindByUUID(tableToken)
+	if err != nil || tbl == nil {
+		return nil, ErrTableNotVerified
+	}
+
+	session, err := s.orderRepo.FindActiveSessionByTableID(tbl.ID)
+	if err != nil {
+		return nil, ErrSessionNotFound
+	}
+
+	return s.orderRepo.FindSessionByIDAndStoreID(session.ID, tbl.StoreID)
+}
+

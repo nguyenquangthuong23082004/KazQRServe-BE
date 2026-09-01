@@ -191,3 +191,21 @@ func (h *OrderHandler) Checkout(c *gin.Context) {
 		"session": session,
 	})
 }
+
+// GetCustomerSession (Public API) cho phép khách hàng xem chi tiết phiên đặt món của bàn mình qua mã QR token
+func (h *OrderHandler) GetCustomerSession(c *gin.Context) {
+	tableToken := c.Query("token")
+	if tableToken == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Mã token bàn không được để trống"})
+		return
+	}
+
+	session, err := h.service.GetCustomerSessionByToken(tableToken)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, session)
+}
+

@@ -136,14 +136,18 @@ Content-Type: {{contentType}}
 }
 
 ### 12. Staff/Thu ngân: Xem chi tiết Phiên làm việc & Tổng Bill hiện tại của Bàn 01
-GET {{baseUrl}}/tables/7/session
+GET {{baseUrl}}/tables/{{createTable.response.body.id}}/session
 Authorization: Bearer {{staffLogin.response.body.access_token}}
 
+### 12b. Public API: Khách xem lại danh sách các món mình đã đặt trong phiên qua QR Token (Không cần Auth)
+GET {{baseUrl}}/public/orders/session?token={{createTable.response.body.uuid}}
+
 ### 13. Thu ngân: Tính tiền, Thanh toán & Đóng phiên bàn (Checkout)
-POST {{baseUrl}}/tables/7/checkout
+POST {{baseUrl}}/tables/{{createTable.response.body.id}}/checkout
 Authorization: Bearer {{staffLogin.response.body.access_token}}
 Content-Type: {{contentType}}
 
 {
   "payment_method": "cash"
 }
+
