@@ -73,3 +73,29 @@ func SaveUploadedFile(file *multipart.FileHeader, subFolder string) (string, err
 	relativePath := fmt.Sprintf("/uploads/%s/%s", subFolder, uniqueName)
 	return relativePath, nil
 }
+
+// DeleteFile xóa file vật lý từ đường dẫn tương đối (ví dụ: "/uploads/products/1712345678_abc.jpg").
+func DeleteFile(relativePath string) error {
+	if relativePath == "" {
+		return nil
+	}
+
+	// Chuẩn hóa đường dẫn
+	cleanPath := filepath.Clean(relativePath)
+
+	// Chỉ xử lý các file thuộc thư mục /uploads/ cục bộ
+	if !strings.HasPrefix(cleanPath, "/uploads/") && !strings.HasPrefix(cleanPath, "uploads/") {
+		return nil // Nối đường dẫn tuyệt đối bên ngoài (ví dụ URL http/https) -> Bỏ qua
+	}
+
+	// Chuyển thành đường dẫn file thực tế trên hệ thống (ví dụ: ./uploads/products/xyz.jpg)
+	filePath := filepath.Join(".", cleanPath)
+
+	// Kiểm tra xem file có tồn tại không trước khi xóa
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return nil // File không tồn tại -> Không cần xóa
+	}
+
+	return os.Remove(filePath)
+}
+

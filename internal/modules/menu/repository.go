@@ -14,9 +14,14 @@ func NewCategoryRepository(db *gorm.DB) *CategoryRepository {
 	}
 }
 
+// Save thực hiện lưu (Create nếu ID=0, Update nếu ID>0) cho Danh mục.
+func (r *CategoryRepository) Save(category *Category) error {
+	return r.db.Save(category).Error
+}
+
 // Create lưu một danh mục (Category) mới vào database.
 func (r *CategoryRepository) Create(category *Category) error {
-	return r.db.Create(category).Error
+	return r.Save(category)
 }
 
 // FindAllByStoreID lấy danh sách danh mục thuộc storeID, sắp xếp theo rank tăng dần.
@@ -46,7 +51,7 @@ func (r *CategoryRepository) FindByIDAndStoreID(id uint, storeID uint) (*Categor
 
 // Update cập nhật thông tin danh mục.
 func (r *CategoryRepository) Update(category *Category) error {
-	return r.db.Save(category).Error
+	return r.Save(category)
 }
 
 // Delete xóa danh mục theo ID và storeID.
@@ -69,9 +74,14 @@ func NewProductRepository(db *gorm.DB) *ProductRepository {
 	}
 }
 
+// Save thực hiện lưu (Create nếu ID=0, Update nếu ID>0) cho Sản phẩm.
+func (r *ProductRepository) Save(product *Product) error {
+	return r.db.Save(product).Error
+}
+
 // Create lưu một sản phẩm (Product) mới vào database.
 func (r *ProductRepository) Create(product *Product) error {
-	return r.db.Create(product).Error
+	return r.Save(product)
 }
 
 // FindAllByStoreID lấy danh sách sản phẩm thuộc storeID.
@@ -103,10 +113,11 @@ func (r *ProductRepository) FindByIDAndStoreID(id uint, storeID uint) (*Product,
 
 // Update cập nhật thông tin sản phẩm.
 func (r *ProductRepository) Update(product *Product) error {
-	return r.db.Save(product).Error
+	return r.Save(product)
 }
 
 // Delete xóa sản phẩm theo ID.
 func (r *ProductRepository) Delete(id uint) error {
 	return r.db.Delete(&Product{}, id).Error
 }
+

@@ -1,544 +1,278 @@
 package menu
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
-// CreateCategoryRequest định nghĩa dữ liệu đầu vào khi tạo Danh mục.
-type CreateCategoryRequest struct {
-	Name string `json:"name" binding:"required"`
-	Rank int    `json:"rank" binding:"required"`
+// Helper private lấy store_id từ Context (sau AuthMiddleware)
+func getStoreIDFromContext(c *gin.Context) (uint, error) {
+	val, exists := c.Get("store_id")
+	if !exists {
+		return 0, errors.New("không tìm thấy thông tin cửa hàng của người dùng")
+	}
+
+	switch v := val.(type) {
+	case uint:
+		return v, nil
+	case float64:
+		return uint(v), nil
+	default:
+		return 0, errors.New("định dạng mã cửa hàng không hợp lệ")
+	}
 }
 
-// CategoryHandler quản lý các request HTTP liên quan đến Danh mục.
+// Helper private đọc id từ URL param (ví dụ: /:id)
+func getParamID(c *gin.Context) (uint, error) {
+	idStr := c.Param("id")
+	if idStr == "" {
+		return 0, nil
+	}
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		return 0, errors.New("mã định danh không hợp lệ")
+	}
+	return uint(id), nil
+}
+
+// ==========================================
+// CATEGORY HANDLER
+// ==========================================
+
 type CategoryHandler struct {
 	service *CategoryService
 }
 
-// NewCategoryHandler khởi tạo CategoryHandler nhận vào service tương ứng.
 func NewCategoryHandler(service *CategoryService) *CategoryHandler {
-	return &CategoryHandler{
-		service: service,
-	}
+	return &CategoryHandler{service: service}
 }
 
-// Create xử lý yêu cầu thêm mới một Danh mục.
-func (h *CategoryHandler) Create(c *gin.Context) {
-	var req CreateCategoryRequest
-
-	// 1. Validate dữ liệu JSON gửi lên
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Tên danh mục và thứ tự hiển thị không hợp lệ",
-		})
+func (h *CategoryHandler) Save(c *gin.Context) {
+	var dto SaveCategoryDTO
+	if err := c.ShouldBindJSON(&dto); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Tên danh mục và thứ tự hiển thị không hợp lệ"})
 		return
 	}
 
-	// 2. Lấy store_id từ Context (đã được lưu ở AuthMiddleware)
-	storeIDVal, exists := c.Get("store_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Không tìm thấy thông tin cửa hàng của người dùng",
-		})
-		return
+	// Lấy ID từ URL Param nếu có (ví dụ: PUT /categories/:id)
+	if paramID, err := getParamID(c); err == nil && paramID > 0 {
+		dto.ID = paramID
 	}
 
-	var storeID uint
-	switch v := storeIDVal.(type) {
-	case float64:
-		storeID = uint(v)
-	case uint:
-		storeID = v
-	default:
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Định dạng mã cửa hàng không hợp lệ",
-		})
-		return
-	}
-
-	// 3. Gọi Service xử lý nghiệp vụ
-	category, err := h.service.CreateCategory(req.Name, req.Rank, storeID)
+	storeID, err := getStoreIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Không thể tạo danh mục món ăn",
-		})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+	dto.StoreID = storeID
+
+	category, err := h.service.SaveCategory(dto)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// 4. Trả về kết quả
-	c.JSON(http.StatusCreated, category)
+	if dto.ID > 0 {
+		c.JSON(http.StatusOK, category)
+	} else {
+		c.JSON(http.StatusCreated, category)
+	}
 }
 
-// List xử lý yêu cầu lấy danh sách toàn bộ danh mục của cửa hàng.
 func (h *CategoryHandler) List(c *gin.Context) {
-	// 1. Lấy store_id từ Context (đã được lưu ở AuthMiddleware)
-	storeIDVal, exists := c.Get("store_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Không tìm thấy thông tin cửa hàng của người dùng",
-		})
+	storeID, err := getStoreIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	var storeID uint
-	switch v := storeIDVal.(type) {
-	case float64:
-		storeID = uint(v)
-	case uint:
-		storeID = v
-	default:
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Định dạng mã cửa hàng không hợp lệ",
-		})
-		return
-	}
-
-	// 2. Gọi Service để lấy danh sách
 	categories, err := h.service.GetCategories(storeID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Không thể lấy danh sách danh mục món ăn",
-		})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không thể lấy danh sách danh mục món ăn"})
 		return
 	}
 
 	c.JSON(http.StatusOK, categories)
 }
 
-// Get xử lý yêu cầu lấy thông tin chi tiết của một danh mục.
 func (h *CategoryHandler) Get(c *gin.Context) {
-	// 1. Lấy id từ URL param
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
+	id, err := getParamID(c)
+	if err != nil || id == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Mã danh mục không hợp lệ"})
+		return
+	}
+
+	storeID, err := getStoreIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Mã danh mục không hợp lệ",
-		})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	// 2. Lấy store_id từ Context
-	storeIDVal, exists := c.Get("store_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Không tìm thấy thông tin cửa hàng của người dùng",
-		})
-		return
-	}
-
-	var storeID uint
-	switch v := storeIDVal.(type) {
-	case float64:
-		storeID = uint(v)
-	case uint:
-		storeID = v
-	default:
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Định dạng mã cửa hàng không hợp lệ",
-		})
-		return
-	}
-
-	// 3. Gọi Service để lấy thông tin chi tiết
-	category, err := h.service.GetCategoryByID(uint(id), storeID)
+	category, err := h.service.GetCategoryByID(id, storeID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Không tìm thấy danh mục hoặc danh mục không thuộc cửa hàng của bạn",
-		})
+		c.JSON(http.StatusNotFound, gin.H{"error": ErrCategoryNotFound.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, category)
 }
 
-// UpdateCategoryRequest định nghĩa dữ liệu cập nhật cho danh mục.
-type UpdateCategoryRequest struct {
-	Name string `json:"name" binding:"required"`
-	Rank int    `json:"rank" binding:"required"`
-}
-
-// Update xử lý yêu cầu cập nhật thông tin danh mục.
-func (h *CategoryHandler) Update(c *gin.Context) {
-	// 1. Lấy id từ URL param
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Mã danh mục không hợp lệ",
-		})
-		return
-	}
-
-	// 2. Validate dữ liệu cập nhật
-	var req UpdateCategoryRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Dữ liệu cập nhật danh mục không hợp lệ",
-		})
-		return
-	}
-
-	// 3. Lấy store_id từ Context
-	storeIDVal, exists := c.Get("store_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Không tìm thấy thông tin cửa hàng của người dùng",
-		})
-		return
-	}
-
-	var storeID uint
-	switch v := storeIDVal.(type) {
-	case float64:
-		storeID = uint(v)
-	case uint:
-		storeID = v
-	default:
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Định dạng mã cửa hàng không hợp lệ",
-		})
-		return
-	}
-
-	// 4. Gọi Service thực hiện cập nhật
-	category, err := h.service.UpdateCategory(uint(id), storeID, req.Name, req.Rank)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Không thể cập nhật danh mục (không tìm thấy hoặc không thuộc cửa hàng của bạn)",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, category)
-}
-
-// Delete xử lý yêu cầu xóa một danh mục.
 func (h *CategoryHandler) Delete(c *gin.Context) {
-	// 1. Lấy id từ URL param
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
+	id, err := getParamID(c)
+	if err != nil || id == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Mã danh mục không hợp lệ"})
+		return
+	}
+
+	storeID, err := getStoreIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Mã danh mục không hợp lệ",
-		})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	// 2. Lấy store_id từ Context
-	storeIDVal, exists := c.Get("store_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Không tìm thấy thông tin cửa hàng của người dùng",
-		})
+	if err := h.service.DeleteCategory(id, storeID); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
 
-	var storeID uint
-	switch v := storeIDVal.(type) {
-	case float64:
-		storeID = uint(v)
-	case uint:
-		storeID = v
-	default:
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Định dạng mã cửa hàng không hợp lệ",
-		})
-		return
-	}
-
-	// 3. Gọi Service thực hiện xóa
-	if err := h.service.DeleteCategory(uint(id), storeID); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Không thể xóa danh mục (không tìm thấy hoặc không thuộc cửa hàng của bạn)",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Xóa danh mục thành công",
-	})
+	c.JSON(http.StatusOK, gin.H{"message": "Xóa danh mục thành công"})
 }
 
-// CreateProductRequest định nghĩa dữ liệu đầu vào khi tạo Sản phẩm.
-type CreateProductRequest struct {
-	Name        string  `json:"name" binding:"required"`
-	Description string  `json:"description"`
-	Price       float64 `json:"price" binding:"required,gte=0"`
-	ImageURL    string  `json:"image_url"`
-	IsAvailable *bool   `json:"is_available" binding:"required"`
-	CategoryID  uint    `json:"category_id" binding:"required"`
-}
+// ==========================================
+// PRODUCT HANDLER
+// ==========================================
 
-// ProductHandler quản lý các request HTTP liên quan đến Sản phẩm.
 type ProductHandler struct {
 	service *ProductService
 }
 
-// NewProductHandler khởi tạo ProductHandler nhận vào service tương ứng.
 func NewProductHandler(service *ProductService) *ProductHandler {
-	return &ProductHandler{
-		service: service,
-	}
+	return &ProductHandler{service: service}
 }
 
-// Create xử lý yêu cầu thêm mới một Sản phẩm.
-func (h *ProductHandler) Create(c *gin.Context) {
-	var req CreateProductRequest
-
-	// 1. Validate dữ liệu JSON gửi lên
-	if err := c.ShouldBindJSON(&req); err != nil {
+func (h *ProductHandler) Save(c *gin.Context) {
+	var dto SaveProductDTO
+	if err := c.ShouldBindJSON(&dto); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Thông tin sản phẩm không hợp lệ (tên, giá >= 0, category_id và trạng thái là bắt buộc)",
 		})
 		return
 	}
 
-	// 2. Lấy store_id từ Context (đã được lưu ở AuthMiddleware)
-	storeIDVal, exists := c.Get("store_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Không tìm thấy thông tin cửa hàng của người dùng",
-		})
-		return
+	// Lấy ID từ URL Param nếu có (ví dụ: PUT /products/:id)
+	if paramID, err := getParamID(c); err == nil && paramID > 0 {
+		dto.ID = paramID
 	}
 
-	var storeID uint
-	switch v := storeIDVal.(type) {
-	case float64:
-		storeID = uint(v)
-	case uint:
-		storeID = v
-	default:
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Định dạng mã cửa hàng không hợp lệ",
-		})
-		return
-	}
-
-	// 3. Gọi Service xử lý nghiệp vụ
-	product, err := h.service.CreateProduct(
-		req.Name,
-		req.Description,
-		req.Price,
-		req.ImageURL,
-		*req.IsAvailable,
-		req.CategoryID,
-		storeID,
-	)
+	storeID, err := getStoreIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+	dto.StoreID = storeID
+
+	product, err := h.service.SaveProduct(dto)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// 4. Trả về kết quả
-	c.JSON(http.StatusCreated, product)
+	if dto.ID > 0 {
+		c.JSON(http.StatusOK, product)
+	} else {
+		c.JSON(http.StatusCreated, product)
+	}
 }
 
-// UpdateProductRequest định nghĩa dữ liệu cập nhật sản phẩm.
-type UpdateProductRequest struct {
-	Name        string  `json:"name" binding:"required"`
-	Description string  `json:"description"`
-	Price       float64 `json:"price" binding:"required,gte=0"`
-	ImageURL    string  `json:"image_url"`
-	IsAvailable *bool   `json:"is_available" binding:"required"`
-	CategoryID  uint    `json:"category_id" binding:"required"`
-}
-
-// List xử lý yêu cầu lấy danh sách toàn bộ sản phẩm của cửa hàng.
 func (h *ProductHandler) List(c *gin.Context) {
-	// 1. Lấy store_id từ Context (đã được lưu ở AuthMiddleware)
-	storeIDVal, exists := c.Get("store_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Không tìm thấy thông tin cửa hàng của người dùng",
-		})
+	storeID, err := getStoreIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	var storeID uint
-	switch v := storeIDVal.(type) {
-	case float64:
-		storeID = uint(v)
-	case uint:
-		storeID = v
-	default:
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Định dạng mã cửa hàng không hợp lệ",
-		})
-		return
-	}
-
-	// 2. Gọi Service để lấy danh sách
 	products, err := h.service.GetProducts(storeID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Không thể lấy danh sách sản phẩm",
-		})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không thể lấy danh sách sản phẩm"})
 		return
 	}
 
 	c.JSON(http.StatusOK, products)
 }
 
-// Get xử lý yêu cầu lấy thông tin chi tiết của một sản phẩm.
 func (h *ProductHandler) Get(c *gin.Context) {
-	// 1. Lấy id từ URL param
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
+	id, err := getParamID(c)
+	if err != nil || id == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Mã sản phẩm không hợp lệ"})
+		return
+	}
+
+	storeID, err := getStoreIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Mã sản phẩm không hợp lệ",
-		})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	// 2. Lấy store_id từ Context
-	storeIDVal, exists := c.Get("store_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Không tìm thấy thông tin cửa hàng của người dùng",
-		})
-		return
-	}
-
-	var storeID uint
-	switch v := storeIDVal.(type) {
-	case float64:
-		storeID = uint(v)
-	case uint:
-		storeID = v
-	default:
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Định dạng mã cửa hàng không hợp lệ",
-		})
-		return
-	}
-
-	// 3. Gọi Service để lấy thông tin chi tiết
-	product, err := h.service.GetProductByID(uint(id), storeID)
+	product, err := h.service.GetProductByID(id, storeID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Không tìm thấy sản phẩm hoặc sản phẩm không thuộc cửa hàng của bạn",
-		})
+		c.JSON(http.StatusNotFound, gin.H{"error": ErrProductNotFound.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, product)
 }
 
-// Update xử lý yêu cầu cập nhật thông tin sản phẩm.
-func (h *ProductHandler) Update(c *gin.Context) {
-	// 1. Lấy id từ URL param
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Mã sản phẩm không hợp lệ",
-		})
-		return
-	}
-
-	// 2. Validate dữ liệu JSON gửi lên
-	var req UpdateProductRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Thông tin cập nhật sản phẩm không hợp lệ (tên, giá >= 0, category_id và trạng thái là bắt buộc)",
-		})
-		return
-	}
-
-	// 3. Lấy store_id từ Context
-	storeIDVal, exists := c.Get("store_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Không tìm thấy thông tin cửa hàng của người dùng",
-		})
-		return
-	}
-
-	var storeID uint
-	switch v := storeIDVal.(type) {
-	case float64:
-		storeID = uint(v)
-	case uint:
-		storeID = v
-	default:
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Định dạng mã cửa hàng không hợp lệ",
-		})
-		return
-	}
-
-	// 4. Gọi Service thực hiện cập nhật
-	product, err := h.service.UpdateProduct(
-		uint(id),
-		storeID,
-		req.Name,
-		req.Description,
-		req.Price,
-		req.ImageURL,
-		*req.IsAvailable,
-		req.CategoryID,
-	)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, product)
-}
-
-// Delete xử lý yêu cầu xóa một sản phẩm.
 func (h *ProductHandler) Delete(c *gin.Context) {
-	// 1. Lấy id từ URL param
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
+	id, err := getParamID(c)
+	if err != nil || id == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Mã sản phẩm không hợp lệ"})
+		return
+	}
+
+	storeID, err := getStoreIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Mã sản phẩm không hợp lệ",
-		})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	// 2. Lấy store_id từ Context
-	storeIDVal, exists := c.Get("store_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Không tìm thấy thông tin cửa hàng của người dùng",
-		})
+	if err := h.service.DeleteProduct(id, storeID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	var storeID uint
-	switch v := storeIDVal.(type) {
-	case float64:
-		storeID = uint(v)
-	case uint:
-		storeID = v
-	default:
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Định dạng mã cửa hàng không hợp lệ",
-		})
+	c.JSON(http.StatusOK, gin.H{"message": "Xóa sản phẩm thành công"})
+}
+
+func (h *ProductHandler) UpdateAvailability(c *gin.Context) {
+	var dto UpdateProductAvailabilityDTO
+	if err := c.ShouldBindJSON(&dto); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Trạng thái is_available (true/false) là bắt buộc"})
 		return
 	}
 
-	// 3. Gọi Service thực hiện xóa
-	if err := h.service.DeleteProduct(uint(id), storeID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
+	id, err := getParamID(c)
+	if err != nil || id == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Mã sản phẩm không hợp lệ"})
+		return
+	}
+	dto.ID = id
+
+	storeID, err := getStoreIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+	dto.StoreID = storeID
+
+	product, err := h.service.UpdateProductAvailability(dto)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Xóa sản phẩm thành công",
-	})
+	c.JSON(http.StatusOK, product)
 }
 

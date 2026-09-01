@@ -22,9 +22,9 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, jwtSecret string) {
 			categoryGroup.GET("", middleware.RequireRoles("admin", "staff"), handler.List)
 			categoryGroup.GET("/:id", middleware.RequireRoles("admin", "staff"), handler.Get)
 
-			// Chỉ tài khoản có quyền admin mới được phép Thêm mới, Cập nhật, Xóa
-			categoryGroup.POST("", middleware.RequireRoles("admin"), handler.Create)
-			categoryGroup.PUT("/:id", middleware.RequireRoles("admin"), handler.Update)
+			// Chỉ tài khoản có quyền admin mới được phép Thêm mới/Cập nhật (Save) hoặc Xóa
+			categoryGroup.POST("", middleware.RequireRoles("admin"), handler.Save)
+			categoryGroup.PUT("/:id", middleware.RequireRoles("admin"), handler.Save)
 			categoryGroup.DELETE("/:id", middleware.RequireRoles("admin"), handler.Delete)
 		}
 	}
@@ -42,9 +42,12 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, jwtSecret string) {
 			productGroup.GET("", middleware.RequireRoles("admin", "staff"), productHandler.List)
 			productGroup.GET("/:id", middleware.RequireRoles("admin", "staff"), productHandler.Get)
 
-			// Chỉ tài khoản có quyền admin mới được phép thêm mới, cập nhật, xóa sản phẩm
-			productGroup.POST("", middleware.RequireRoles("admin"), productHandler.Create)
-			productGroup.PUT("/:id", middleware.RequireRoles("admin"), productHandler.Update)
+			// Cả Admin và Staff đều có quyền cập nhật nhanh trạng thái Còn/Hết món (is_available)
+			productGroup.PATCH("/:id/availability", middleware.RequireRoles("admin", "staff"), productHandler.UpdateAvailability)
+
+			// Chỉ tài khoản có quyền admin mới được phép Thêm mới/Cập nhật (Save) hoặc Xóa
+			productGroup.POST("", middleware.RequireRoles("admin"), productHandler.Save)
+			productGroup.PUT("/:id", middleware.RequireRoles("admin"), productHandler.Save)
 			productGroup.DELETE("/:id", middleware.RequireRoles("admin"), productHandler.Delete)
 		}
 	}

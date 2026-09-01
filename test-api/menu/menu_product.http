@@ -14,29 +14,29 @@ Content-Type: {{contentType}}
 
 ### 2. Tạo mới danh mục món ăn (để lấy category_id)
 # @name createCategory
-POST {{baseUrl}}/categories
-Authorization: Bearer {{adminLogin.response.body.access_token}}
-Content-Type: {{contentType}}
+# POST {{baseUrl}}/categories
+# Authorization: Bearer {{adminLogin.response.body.access_token}}
+# Content-Type: {{contentType}}
 
-{
-  "name": "Cà Phê Truyền Thống",
-  "rank": 1
-}
+# {
+#   "name": "Cà Phê Truyền Thống",
+#   "rank": 1
+# }
 
 ### 3. Tạo mới sản phẩm (Thành công - Yêu cầu Admin Token và thuộc Store của mình)
 # @name createProduct
-POST {{baseUrl}}/products
-Authorization: Bearer {{adminLogin.response.body.access_token}}
-Content-Type: {{contentType}}
+# POST {{baseUrl}}/products
+# Authorization: Bearer {{adminLogin.response.body.access_token}}
+# Content-Type: {{contentType}}
 
-{
-  "name": "Cà Phê Sữa Đá Sài Gòn",
-  "description": "Cà phê Robusta đậm đặc pha phin kết hợp với sữa đặc thơm ngon và đá lạnh.",
-  "price": 29000.00,
-  "image_url": "https://example.com/images/cafe-sua-da.jpg",
-  "is_available": true,
-  "category_id": {{createCategory.response.body.ID}}
-}
+# {
+#   "name": "Cà Phê Sữa Đá Sài Gòn",
+#   "description": "Cà phê Robusta đậm đặc pha phin kết hợp với sữa đặc thơm ngon và đá lạnh.",
+#   "price": 29000.00,
+#   "image_url": "https://example.com/images/cafe-sua-da.jpg",
+#   "is_available": true,
+#   "category_id": {{createCategory.response.body.ID}}
+# }
 
 ### 4. Đăng nhập tài khoản Staff
 # @name staffLogin
@@ -49,76 +49,95 @@ Content-Type: {{contentType}}
 }
 
 ### 5. Thử tạo sản phẩm bằng tài khoản Staff (Thất bại -> 403 Forbidden)
-POST {{baseUrl}}/products
-Authorization: Bearer {{staffLogin.response.body.access_token}}
-Content-Type: {{contentType}}
+# POST {{baseUrl}}/products
+# Authorization: Bearer {{staffLogin.response.body.access_token}}
+# Content-Type: {{contentType}}
 
-{
-  "name": "Trà Đào Cam Sả",
-  "price": 35000.00,
-  "is_available": true,
-  "category_id": {{createCategory.response.body.ID}}
-}
+# {
+#   "name": "Trà Đào Cam Sả",
+#   "price": 35000.00,
+#   "is_available": true,
+#   "category_id": {{createCategory.response.body.ID}}
+# }
 
 ### 6. Thử tạo sản phẩm với Category của Store khác (Thất bại -> 400 Bad Request)
 # Giả sử category_id 9999 không thuộc Store của adminLogin hiện tại
-POST {{baseUrl}}/products
-Authorization: Bearer {{adminLogin.response.body.access_token}}
-Content-Type: {{contentType}}
+# POST {{baseUrl}}/products
+# Authorization: Bearer {{adminLogin.response.body.access_token}}
+# Content-Type: {{contentType}}
 
-{
-  "name": "Cà Phê Ngoại Lệ",
-  "price": 30000.00,
-  "is_available": true,
-  "category_id": 9999
-}
+# {
+#   "name": "Cà Phê Ngoại Lệ",
+#   "price": 30000.00,
+#   "is_available": true,
+#   "category_id": 9999
+# }
 
 ### 7. Lấy danh sách toàn bộ sản phẩm của Store (Dùng token Admin)
-GET {{baseUrl}}/products
-Authorization: Bearer {{adminLogin.response.body.access_token}}
+# GET {{baseUrl}}/products
+# Authorization: Bearer {{adminLogin.response.body.access_token}}
 
 ### 8. Lấy danh sách toàn bộ sản phẩm của Store (Dùng token Staff)
-GET {{baseUrl}}/products
-Authorization: Bearer {{staffLogin.response.body.access_token}}
+# GET {{baseUrl}}/products
+# Authorization: Bearer {{staffLogin.response.body.access_token}}
 
 ### 9. Lấy chi tiết sản phẩm vừa tạo (Dùng token Admin)
-GET {{baseUrl}}/products/{{createProduct.response.body.ID}}
-Authorization: Bearer {{adminLogin.response.body.access_token}}
+# GET {{baseUrl}}/products/{{createProduct.response.body.ID}}
+# Authorization: Bearer {{adminLogin.response.body.access_token}}
 
 ### 10. Cập nhật thông tin sản phẩm vừa tạo (Thành công - Dùng token Admin)
-PUT {{baseUrl}}/products/{{createProduct.response.body.ID}}
-Authorization: Bearer {{adminLogin.response.body.access_token}}
-Content-Type: {{contentType}}
+# PUT {{baseUrl}}/products/{{createProduct.response.body.ID}}
+# Authorization: Bearer {{adminLogin.response.body.access_token}}
+# Content-Type: {{contentType}}
 
-{
-  "name": "Cà Phê Sữa Đá Sài Gòn (Size L)",
-  "description": "Cà phê Robusta đậm đặc gấp đôi sữa đá mát lạnh.",
-  "price": 35000.00,
-  "image_url": "https://example.com/images/cafe-sua-da-large.jpg",
-  "is_available": true,
-  "category_id": {{createCategory.response.body.ID}}
-}
+# {
+#   "name": "Cà Phê Sữa Đá Sài Gòn (Size L)",
+#   "description": "Cà phê Robusta đậm đặc gấp đôi sữa đá mát lạnh.",
+#   "price": 35000.00,
+#   "image_url": "https://example.com/images/cafe-sua-da-large.jpg",
+#   "is_available": true,
+#   "category_id": {{createCategory.response.body.ID}}
+# }
 
-### 11. Thử cập nhật sản phẩm bằng quyền Staff (Thất bại -> 403 Forbidden)
-PUT {{baseUrl}}/products/{{createProduct.response.body.ID}}
+### 11. Cập nhật trạng thái Hết món (is_available = false) bằng quyền Staff (Thành công -> 200 OK)
+PATCH {{baseUrl}}/products/{{createProduct.response.body.ID}}/availability
 Authorization: Bearer {{staffLogin.response.body.access_token}}
 Content-Type: {{contentType}}
 
 {
-  "name": "Cà Phê Hack Quyền",
-  "price": 1000.00,
-  "is_available": true,
-  "category_id": {{createCategory.response.body.ID}}
+  "is_available": false
 }
 
-### 12. Thử xóa sản phẩm bằng quyền Staff (Thất bại -> 403 Forbidden)
-DELETE {{baseUrl}}/products/{{createProduct.response.body.ID}}
-Authorization: Bearer {{staffLogin.response.body.access_token}}
-
-### 13. Xóa sản phẩm bằng quyền Admin (Thành công -> 200 OK)
-DELETE {{baseUrl}}/products/{{createProduct.response.body.ID}}
+### 12. Cập nhật trạng thái Còn món (is_available = true) bằng quyền Admin (Thành công -> 200 OK)
+PATCH {{baseUrl}}/products/{{createProduct.response.body.ID}}/availability
 Authorization: Bearer {{adminLogin.response.body.access_token}}
+Content-Type: {{contentType}}
 
-### 14. Thử lấy lại chi tiết sản phẩm vừa xóa (Thất bại -> 404 Not Found)
-GET {{baseUrl}}/products/{{createProduct.response.body.ID}}
-Authorization: Bearer {{adminLogin.response.body.access_token}}
+{
+  "is_available": true
+}
+
+### 13. Thử cập nhật sản phẩm bằng quyền Staff (Thất bại -> 403 Forbidden)
+# PUT {{baseUrl}}/products/{{createProduct.response.body.ID}}
+# Authorization: Bearer {{staffLogin.response.body.access_token}}
+# Content-Type: {{contentType}}
+
+# {
+#   "name": "Cà Phê Hack Quyền",
+#   "price": 1000.00,
+#   "is_available": true,
+#   "category_id": {{createCategory.response.body.ID}}
+# }
+
+### 14. Thử xóa sản phẩm bằng quyền Staff (Thất bại -> 403 Forbidden)
+# DELETE {{baseUrl}}/products/{{createProduct.response.body.ID}}
+# Authorization: Bearer {{staffLogin.response.body.access_token}}
+
+### 15. Xóa sản phẩm bằng quyền Admin (Thành công -> 200 OK)
+# DELETE {{baseUrl}}/products/{{createProduct.response.body.ID}}
+# Authorization: Bearer {{adminLogin.response.body.access_token}}
+
+### 16. Thử lấy lại chi tiết sản phẩm vừa xóa (Thất bại -> 404 Not Found)
+# GET {{baseUrl}}/products/{{createProduct.response.body.ID}}
+# Authorization: Bearer {{adminLogin.response.body.access_token}}
+

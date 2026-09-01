@@ -1,83 +1,88 @@
 package menu
 
-import "errors"
+import (
+	"errors"
 
-// CategoryService chịu trách nhiệm xử lý các logic nghiệp vụ (business logic) liên quan đến Danh mục.
+	"github.com/nguyenquangthuong23082004/KazQRServe-BE/internal/shared/utils"
+)
+
+var (
+	ErrCategoryNotFound = errors.New("danh mục không tồn tại hoặc không thuộc cửa hàng của bạn")
+	ErrProductNotFound  = errors.New("sản phẩm không tồn tại hoặc không thuộc cửa hàng của bạn")
+)
+
+// ==========================================
+// CATEGORY SERVICE
+// ==========================================
+
 type CategoryService struct {
 	repo *CategoryRepository
 }
 
-// NewCategoryService khởi tạo CategoryService mới nhận repo tương ứng.
 func NewCategoryService(repo *CategoryRepository) *CategoryService {
-	return &CategoryService{
-		repo: repo,
-	}
+	return &CategoryService{repo: repo}
 }
 
-// CreateCategory xử lý việc thêm mới một Danh mục cho cửa hàng.
-func (s *CategoryService) CreateCategory(name string, rank int, storeID uint) (*Category, error) {
+// SaveCategory hợp nhất luồng Save (ID > 0: Update, ID = 0: Create)
+func (s *CategoryService) SaveCategory(dto SaveCategoryDTO) (*Category, error) {
+	if dto.ID > 0 {
+		return s.updateCategory(dto)
+	}
+	return s.createCategory(dto)
+}
+
+func (s *CategoryService) createCategory(dto SaveCategoryDTO) (*Category, error) {
 	category := &Category{
-		Name:    name,
-		Rank:    rank,
-		StoreID: storeID,
+		Name:    dto.Name,
+		Rank:    dto.Rank,
+		StoreID: dto.StoreID,
 	}
 
-	if err := s.repo.Create(category); err != nil {
+	if err := s.repo.Save(category); err != nil {
 		return nil, err
 	}
-
 	return category, nil
 }
 
-// GetCategories trả về danh sách danh mục thuộc storeID.
+func (s *CategoryService) updateCategory(dto SaveCategoryDTO) (*Category, error) {
+	category, err := s.repo.FindByIDAndStoreID(dto.ID, dto.StoreID)
+	if err != nil {
+		return nil, ErrCategoryNotFound
+	}
+
+	category.Name = dto.Name
+	category.Rank = dto.Rank
+
+	if err := s.repo.Save(category); err != nil {
+		return nil, err
+	}
+	return category, nil
+}
+
 func (s *CategoryService) GetCategories(storeID uint) ([]Category, error) {
 	return s.repo.FindAllByStoreID(storeID)
 }
 
-// GetCategoryByID trả về danh mục cụ thể theo ID và storeID.
 func (s *CategoryService) GetCategoryByID(id uint, storeID uint) (*Category, error) {
 	return s.repo.FindByIDAndStoreID(id, storeID)
 }
 
-// UpdateCategory cập nhật thông tin của danh mục.
-func (s *CategoryService) UpdateCategory(id uint, storeID uint, name string, rank int) (*Category, error) {
-	// 1. Kiểm tra xem danh mục có tồn tại và thuộc storeID này hay không
-	category, err := s.repo.FindByIDAndStoreID(id, storeID)
-	if err != nil {
-		return nil, err
-	}
-
-	// 2. Cập nhật thông tin mới
-	category.Name = name
-	category.Rank = rank
-
-	// 3. Lưu vào Database
-	if err := s.repo.Update(category); err != nil {
-		return nil, err
-	}
-
-	return category, nil
-}
-
-// DeleteCategory xóa danh mục cụ thể.
 func (s *CategoryService) DeleteCategory(id uint, storeID uint) error {
-	// 1. Kiểm tra xem danh mục có tồn tại và thuộc storeID hay không (để tránh xóa nhầm)
-	_, err := s.repo.FindByIDAndStoreID(id, storeID)
-	if err != nil {
-		return err
+	if _, err := s.repo.FindByIDAndStoreID(id, storeID); err != nil {
+		return ErrCategoryNotFound
 	}
-
-	// 2. Thực hiện xóa
 	return s.repo.Delete(id, storeID)
 }
 
-// ProductService chịu trách nhiệm xử lý các logic nghiệp vụ (business logic) liên quan đến Sản phẩm.
+// ==========================================
+// PRODUCT SERVICE
+// ==========================================
+
 type ProductService struct {
 	productRepo  *ProductRepository
 	categoryRepo *CategoryRepository
 }
 
-// NewProductService khởi tạo ProductService mới nhận các repo tương ứng.
 func NewProductService(productRepo *ProductRepository, categoryRepo *CategoryRepository) *ProductService {
 	return &ProductService{
 		productRepo:  productRepo,
@@ -85,26 +90,31 @@ func NewProductService(productRepo *ProductRepository, categoryRepo *CategoryRep
 	}
 }
 
-// CreateProduct xử lý việc thêm mới một Sản phẩm cho cửa hàng.
-func (s *ProductService) CreateProduct(name string, description string, price float64, imageURL string, isAvailable bool, categoryID uint, storeID uint) (*Product, error) {
-	// 1. Xác thực xem CategoryID có tồn tại và thuộc storeID này hay không
-	category, err := s.categoryRepo.FindByIDAndStoreID(categoryID, storeID)
+// SaveProduct hợp nhất luồng Save (ID > 0: Update, ID = 0: Create)
+func (s *ProductService) SaveProduct(dto SaveProductDTO) (*Product, error) {
+	// 1. Kiểm tra CategoryID thuộc StoreID
+	category, err := s.categoryRepo.FindByIDAndStoreID(dto.CategoryID, dto.StoreID)
 	if err != nil {
-		return nil, errors.New("danh mục không tồn tại hoặc không thuộc cửa hàng của bạn")
+		return nil, ErrCategoryNotFound
 	}
 
-	// 2. Tạo đối tượng Product
+	if dto.ID > 0 {
+		return s.updateProduct(dto, category)
+	}
+	return s.createProduct(dto, category)
+}
+
+func (s *ProductService) createProduct(dto SaveProductDTO, category *Category) (*Product, error) {
 	product := &Product{
-		Name:        name,
-		Description: description,
-		Price:       price,
-		ImageURL:    imageURL,
-		IsAvailable: isAvailable,
-		CategoryID:  categoryID,
+		Name:        dto.Name,
+		Description: dto.Description,
+		Price:       dto.Price,
+		ImageURL:    dto.ImageURL,
+		IsAvailable: *dto.IsAvailable,
+		CategoryID:  dto.CategoryID,
 	}
 
-	// 3. Lưu vào Database
-	if err := s.productRepo.Create(product); err != nil {
+	if err := s.productRepo.Save(product); err != nil {
 		return nil, err
 	}
 
@@ -112,58 +122,77 @@ func (s *ProductService) CreateProduct(name string, description string, price fl
 	return product, nil
 }
 
-// GetProducts trả về danh sách sản phẩm thuộc storeID.
+func (s *ProductService) updateProduct(dto SaveProductDTO, category *Category) (*Product, error) {
+	product, err := s.productRepo.FindByIDAndStoreID(dto.ID, dto.StoreID)
+	if err != nil {
+		return nil, ErrProductNotFound
+	}
+
+	// Xử lý thay đổi file ảnh trên đĩa server
+	oldImageURL := product.ImageURL
+	shouldDeleteOldImage := false
+
+	if dto.ImageURL != "" && dto.ImageURL != oldImageURL {
+		product.ImageURL = dto.ImageURL
+		shouldDeleteOldImage = true
+	}
+
+	product.Name = dto.Name
+	product.Description = dto.Description
+	product.Price = dto.Price
+	product.IsAvailable = *dto.IsAvailable
+	product.CategoryID = dto.CategoryID
+	product.Category = category
+
+	if err := s.productRepo.Save(product); err != nil {
+		return nil, err
+	}
+
+	// Đổi ảnh thành công mới tiến hành xóa file ảnh cũ
+	if shouldDeleteOldImage {
+		_ = utils.DeleteFile(oldImageURL)
+	}
+
+	return product, nil
+}
+
 func (s *ProductService) GetProducts(storeID uint) ([]Product, error) {
 	return s.productRepo.FindAllByStoreID(storeID)
 }
 
-// GetProductByID trả về sản phẩm cụ thể theo ID và storeID.
 func (s *ProductService) GetProductByID(id uint, storeID uint) (*Product, error) {
 	return s.productRepo.FindByIDAndStoreID(id, storeID)
 }
 
-// UpdateProduct cập nhật thông tin sản phẩm.
-func (s *ProductService) UpdateProduct(id uint, storeID uint, name string, description string, price float64, imageURL string, isAvailable bool, categoryID uint) (*Product, error) {
-	// 1. Kiểm tra xem sản phẩm có tồn tại và thuộc storeID này hay không
+func (s *ProductService) DeleteProduct(id uint, storeID uint) error {
 	product, err := s.productRepo.FindByIDAndStoreID(id, storeID)
 	if err != nil {
-		return nil, errors.New("sản phẩm không tồn tại hoặc không thuộc cửa hàng của bạn")
+		return ErrProductNotFound
 	}
 
-	// 2. Nếu đổi danh mục, kiểm tra xem danh mục mới có thuộc storeID này không
-	var category *Category
-	if product.CategoryID != categoryID {
-		category, err = s.categoryRepo.FindByIDAndStoreID(categoryID, storeID)
-		if err != nil {
-			return nil, errors.New("danh mục mới không tồn tại hoặc không thuộc cửa hàng của bạn")
-		}
-		product.CategoryID = categoryID
-		product.Category = category
+	if err := s.productRepo.Delete(id); err != nil {
+		return err
 	}
 
-	// 3. Cập nhật thông tin khác
-	product.Name = name
-	product.Description = description
-	product.Price = price
-	product.ImageURL = imageURL
-	product.IsAvailable = isAvailable
+	if product.ImageURL != "" {
+		_ = utils.DeleteFile(product.ImageURL)
+	}
 
-	// 4. Lưu thay đổi
-	if err := s.productRepo.Update(product); err != nil {
+	return nil
+}
+
+// UpdateProductAvailability cập nhật nhanh trạng thái Còn món / Hết món cho sản phẩm.
+func (s *ProductService) UpdateProductAvailability(dto UpdateProductAvailabilityDTO) (*Product, error) {
+	product, err := s.productRepo.FindByIDAndStoreID(dto.ID, dto.StoreID)
+	if err != nil {
+		return nil, ErrProductNotFound
+	}
+
+	product.IsAvailable = *dto.IsAvailable
+	if err := s.productRepo.Save(product); err != nil {
 		return nil, err
 	}
 
 	return product, nil
 }
 
-// DeleteProduct xóa sản phẩm.
-func (s *ProductService) DeleteProduct(id uint, storeID uint) error {
-	// 1. Kiểm tra xem sản phẩm có tồn tại và thuộc storeID này không
-	_, err := s.productRepo.FindByIDAndStoreID(id, storeID)
-	if err != nil {
-		return errors.New("sản phẩm không tồn tại hoặc không thuộc cửa hàng của bạn")
-	}
-
-	// 2. Xóa
-	return s.productRepo.Delete(id)
-}
